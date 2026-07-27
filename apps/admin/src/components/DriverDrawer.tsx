@@ -53,6 +53,9 @@ export default function DriverDrawer({ driver, onClose }: Props) {
       setTimeout(() => {
         onClose()
       }, 500)
+    } catch (error) {
+      console.error('Failed to update account status:', error)
+      alert('Could not update this account. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -184,7 +187,7 @@ export default function DriverDrawer({ driver, onClose }: Props) {
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-button bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-60 transition-colors"
                 >
                   {loading && <Spinner />}
-                  Unsuspend driver
+                  Enable account
                 </button>
               ) : (
                 <button
@@ -193,7 +196,7 @@ export default function DriverDrawer({ driver, onClose }: Props) {
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-button bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-60 transition-colors"
                 >
                   {loading && <Spinner />}
-                  Suspend driver
+                  Disable account
                 </button>
               )}
             </div>
