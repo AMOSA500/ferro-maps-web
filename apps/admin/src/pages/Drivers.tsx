@@ -174,6 +174,9 @@ export default function Drivers() {
     try {
       await updateDoc(doc(db, 'users', driver.uid), { isSuspended: !driver.isSuspended })
       setRefreshTick((t) => t + 1)
+    } catch (error) {
+      console.error('Failed to update account status:', error)
+      alert('Could not update this account. Please try again.')
     } finally {
       setSuspendingUid(null)
       setOpenMenuUid(null)
@@ -374,8 +377,8 @@ export default function Drivers() {
                                 {suspendingUid === driver.uid
                                   ? 'Updating…'
                                   : driver.isSuspended
-                                    ? 'Unsuspend'
-                                    : 'Suspend'}
+                                    ? 'Enable account'
+                                    : 'Disable account'}
                               </button>
                             </div>
                           )}
