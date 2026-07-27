@@ -376,6 +376,12 @@ export const onAccountAction = onDocumentCreated(
         } else {
           await userRef.update({isSuspended: false});
         }
+
+        try {
+          await getAuth().updateUser(uid, {disabled: type === "suspend"});
+        } catch (err) {
+          logger.warn(`onAccountAction: could not ${type} auth user for uid=${uid}`, err);
+        }
       } else if (type === "delete") {
         const userRef = db.collection("users").doc(uid);
         const userSnap = await userRef.get();
