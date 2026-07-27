@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import type { Timestamp } from 'firebase/firestore'
-import { db } from '../lib/firebase'
+import { submitAccountAction } from '../lib/accountActions'
 import { formatRelativeTime } from '../lib/utils'
 
 export interface DriverDetail {
@@ -41,15 +40,13 @@ function Spinner() {
 
 export default function DriverDrawer({ driver, onClose }: Props) {
   const [loading, setLoading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   async function handleSuspendToggle() {
     if (!driver) return
     setLoading(true)
     try {
-      await updateDoc(doc(db, 'users', driver.uid), {
-        isSuspended: !driver.isSuspended,
-        ...(!driver.isSuspended ? { suspendedAt: serverTimestamp() } : {}),
-      })
+      await submitAccountAction(driver.isSuspended ? 'unsuspend' : 'suspend', driver.uid)
       setTimeout(() => {
         onClose()
       }, 500)
@@ -58,6 +55,28 @@ export default function DriverDrawer({ driver, onClose }: Props) {
       alert('Could not update this account. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (!driver) return
+
+    const confirmed = window.confirm(
+      `Permanently delete ${driver.name}'s account?\n\n` +
+        'This removes their Firebase login, profile data, and earnings history. ' +
+        'This cannot be undone.',
+    )
+    if (!confirmed) return
+
+    setDeleting(true)
+    try {
+      await submitAccountAction('delete', driver.uid)
+      onClose()
+    } catch (error) {
+      console.error('Failed to delete account:', error)
+      alert('Could not delete this account. Please try again.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -179,7 +198,7 @@ export default function DriverDrawer({ driver, onClose }: Props) {
             </div>
 
             {/* Actions */}
-            <div className="px-6 py-4 border-t border-gray-200">
+            <div className="px-6 py-4 border-t border-gray-200 flex flex-col gap-2">
               {driver.isSuspended ? (
                 <button
                   onClick={handleSuspendToggle}
@@ -199,6 +218,14 @@ export default function DriverDrawer({ driver, onClose }: Props) {
                   Disable account
                 </button>
               )}
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-button border border-red-300 text-red-600 text-sm font-medium hover:bg-red-50 disabled:opacity-60 transition-colors"
+              >
+                {deleting && <Spinner />}
+                {deleting ? 'Deleting…' : 'Delete account'}
+              </button>
             </div>
           </>
         )}
