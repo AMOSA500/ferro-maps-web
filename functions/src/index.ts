@@ -379,6 +379,9 @@ export const onAccountAction = onDocumentCreated(
 
         try {
           await getAuth().updateUser(uid, {disabled: type === "suspend"});
+          if (type === "suspend") {
+            await getAuth().revokeRefreshTokens(uid);
+          }
         } catch (err) {
           logger.warn(`onAccountAction: could not ${type} auth user for uid=${uid}`, err);
         }
