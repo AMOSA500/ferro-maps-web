@@ -2,45 +2,50 @@ import mapView from './assets/map-view.png'
 import exploreOpportunities from './assets/explore-opportunities.png'
 import profile from './assets/profile.png'
 
-function PhoneSVG({ clipId, image }: { clipId: string; image: string }) {
+function PhoneSVG({ clipId, image, label }: { clipId: string; image: string; label: string }) {
   return (
-    <svg
-      width="280"
-      height="580"
-      viewBox="0 0 280 580"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <clipPath id={clipId}>
-          <rect x="3" y="3" width="274" height="574" rx="45" ry="45" />
-        </clipPath>
-      </defs>
-      {/* Outer phone shell */}
-      <rect
-        x="2"
-        y="2"
-        width="276"
-        height="576"
-        rx="46"
-        ry="46"
+    <div className="relative" style={{ width: 280, height: 580 }}>
+      <img
+        src={image}
+        alt={`${label} screen in the Ferro Maps app`}
+        className="absolute object-cover"
+        style={{
+          left: 3,
+          top: 3,
+          width: 274,
+          height: 574,
+          borderRadius: 45,
+          transform: 'translateZ(0)',
+          imageRendering: '-webkit-optimize-contrast' as React.CSSProperties['imageRendering'],
+        }}
+      />
+      <svg
+        width="280"
+        height="580"
+        viewBox="0 0 280 580"
         fill="none"
-        stroke="#0F1626"
-        strokeWidth="5"
-      />
-      {/* Screenshot clipped to phone screen */}
-      <image
-        href={image}
-        x="3"
-        y="3"
-        width="274"
-        height="574"
-        clipPath={`url(#${clipId})`}
-        preserveAspectRatio="xMidYMid slice"
-      />
-      {/* Dynamic island pill on top */}
-      <rect x="105" y="16" width="70" height="22" rx="11" fill="#0F1626" />
-    </svg>
+        xmlns="http://www.w3.org/2000/svg"
+        className="absolute inset-0 pointer-events-none"
+      >
+        <defs>
+          <clipPath id={clipId}>
+            <rect x="3" y="3" width="274" height="574" rx="45" ry="45" />
+          </clipPath>
+        </defs>
+        <rect
+          x="2"
+          y="2"
+          width="276"
+          height="576"
+          rx="46"
+          ry="46"
+          fill="none"
+          stroke="#0F1626"
+          strokeWidth="5"
+        />
+        <rect x="105" y="16" width="70" height="22" rx="11" fill="#0F1626" />
+      </svg>
+    </div>
   )
 }
 
@@ -74,7 +79,7 @@ export default function AppScreenshots() {
         {phones.map(({ label, clipId, image }) => (
           <div key={label} className="flex flex-col items-center gap-4 snap-center shrink-0">
             <span className="text-label font-medium text-neutral-700">{label}</span>
-            <PhoneSVG clipId={clipId} image={image} />
+            <PhoneSVG clipId={clipId} image={image} label={label} />
           </div>
         ))}
       </div>
