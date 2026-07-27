@@ -42,11 +42,11 @@ export default function Header() {
   return (
     <>
       <div
-        className="fixed top-0 left-0 right-0 z-[51] h-5 bg-transparent"
+        className="fixed top-0 left-0 right-0 z-[51] h-5 bg-white"
         onMouseEnter={() => setVisible(true)}
       />
       <header
-        className={`fixed top-0 left-0 right-0 z-50 bg-white border-b border-border-default transition-transform duration-slow ease-standard ${
+        className={`fixed top-0 left-0 right-0 z-50 bg-white border-b border-border-default transition-transform duration-slow ease-standard will-change-transform [backface-visibility:hidden] [-webkit-backface-visibility:hidden] ${
           visible ? 'translate-y-0' : '-translate-y-full'
         }`}
       >
