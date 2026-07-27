@@ -8,6 +8,7 @@ import {defineSecret} from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
 import sgMail from "@sendgrid/mail";
 import {getFirestore, FieldValue} from "firebase-admin/firestore";
+import {getAuth} from "firebase-admin/auth";
 import {initializeApp, getApps} from "firebase-admin/app";
 import * as crypto from "crypto";
 
@@ -352,37 +353,53 @@ export const submitDriverReply = onCall(
   }
 );
 
-export const setDriverSuspended = onCall(
-  {region: "europe-west2"},
-  async (request: CallableRequest) => {
-    // Verify caller is an authenticated admin
-    if (!request.auth) {
-      throw new HttpsError("unauthenticated", "You must be signed in.");
-    }
-    if (request.auth.token.role !== "admin") {
-      throw new HttpsError("permission-denied", "Admin access required.");
-    }
-
-    const {uid, suspend} = request.data as {uid: string; suspend: boolean};
-
-    if (!uid || typeof suspend !== "boolean") {
-      throw new HttpsError("invalid-argument", "uid and suspend are required.");
+export const onAccountAction = onDocumentCreated(
+  {document: "accountActions/{actionId}"},
+  async (event) => {
+    const data = event.data?.data();
+    const actionRef = event.data?.ref;
+    if (!data || !actionRef) {
+      logger.warn("onAccountAction: no data in event, skipping");
+      return;
     }
 
-    const userRef = db.collection("users").doc(uid);
+    const {type, uid} = data as {type: string; uid: string};
 
-    if (suspend) {
-      await userRef.update({
-        isSuspended: true,
-        suspendedAt: FieldValue.serverTimestamp(),
-      });
-    } else {
-      await userRef.update({
-        isSuspended: false,
-      });
+    try {
+      if (type === "suspend" || type === "unsuspend") {
+        const userRef = db.collection("users").doc(uid);
+        if (type === "suspend") {
+          await userRef.update({
+            isSuspended: true,
+            suspendedAt: FieldValue.serverTimestamp(),
+          });
+        } else {
+          await userRef.update({isSuspended: false});
+        }
+      } else if (type === "delete") {
+        const userRef = db.collection("users").doc(uid);
+        const userSnap = await userRef.get();
+        if (!userSnap.exists) {
+          throw new Error("Driver account not found.");
+        }
+
+        await db.recursiveDelete(userRef);
+
+        try {
+          await getAuth().deleteUser(uid);
+        } catch (err) {
+          logger.warn(`onAccountAction: could not delete auth user for uid=${uid}`, err);
+        }
+      } else {
+        throw new Error(`Unknown action type: ${type}`);
+      }
+
+      await actionRef.update({status: "done", completedAt: FieldValue.serverTimestamp()});
+      logger.info(`onAccountAction: ${type} completed for uid=${uid}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await actionRef.update({status: "error", error: message});
+      logger.error(`onAccountAction: ${type} failed for uid=${uid}`, err);
     }
-
-    logger.info(`setDriverSuspended: uid=${uid} suspend=${suspend} by admin=${request.auth.uid}`);
-    return {success: true};
   }
 );
