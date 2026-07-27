@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import {
   collection,
   query,
@@ -6,8 +7,6 @@ import {
   limit,
   startAfter,
   onSnapshot,
-  doc,
-  updateDoc,
   GeoPoint,
   Timestamp,
   type QueryDocumentSnapshot,
@@ -16,6 +15,7 @@ import {
 import { MoreHorizontal, ChevronUp, ChevronDown } from 'lucide-react'
 import { Input, Badge } from '@ferro-maps/ui'
 import { db } from '../lib/firebase'
+import { submitAccountAction } from '../lib/accountActions'
 import AppShell from '../components/AppShell'
 import DriverDrawer from '../components/DriverDrawer'
 import type { DriverDetail } from '../components/DriverDrawer'
@@ -82,7 +82,9 @@ export default function Drivers() {
   const [search, setSearch] = useState('')
   const [selectedDriver, setSelectedDriver] = useState<DriverDetail | null>(null)
   const [suspendingUid, setSuspendingUid] = useState<string | null>(null)
+  const [deletingUid, setDeletingUid] = useState<string | null>(null)
   const [openMenuUid, setOpenMenuUid] = useState<string | null>(null)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null)
   const [refreshTick, setRefreshTick] = useState(0)
   const [sortColumn, setSortColumn] = useState('name')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
@@ -142,9 +144,16 @@ export default function Drivers() {
 
   useEffect(() => {
     if (!openMenuUid) return
-    const close = () => setOpenMenuUid(null)
+    const close = () => {
+      setOpenMenuUid(null)
+      setMenuPosition(null)
+    }
     document.addEventListener('click', close)
-    return () => document.removeEventListener('click', close)
+    window.addEventListener('scroll', close, true)
+    return () => {
+      document.removeEventListener('click', close)
+      window.removeEventListener('scroll', close, true)
+    }
   }, [openMenuUid])
 
   const filtered = filteredDrivers.filter((d) => {
@@ -172,7 +181,7 @@ export default function Drivers() {
   async function handleSuspendToggle(driver: DriverDoc) {
     setSuspendingUid(driver.uid)
     try {
-      await updateDoc(doc(db, 'users', driver.uid), { isSuspended: !driver.isSuspended })
+      await submitAccountAction(driver.isSuspended ? 'unsuspend' : 'suspend', driver.uid)
       setRefreshTick((t) => t + 1)
     } catch (error) {
       console.error('Failed to update account status:', error)
@@ -180,6 +189,29 @@ export default function Drivers() {
     } finally {
       setSuspendingUid(null)
       setOpenMenuUid(null)
+    }
+  }
+
+  async function handleDeleteAccount(driver: DriverDoc) {
+    setOpenMenuUid(null)
+    setMenuPosition(null)
+
+    const confirmed = window.confirm(
+      `Permanently delete ${driver.name}'s account?\n\n` +
+        'This removes their Firebase login, profile data, and earnings history. ' +
+        'This cannot be undone.',
+    )
+    if (!confirmed) return
+
+    setDeletingUid(driver.uid)
+    try {
+      await submitAccountAction('delete', driver.uid)
+      setRefreshTick((t) => t + 1)
+    } catch (error) {
+      console.error('Failed to delete account:', error)
+      alert('Could not delete this account. Please try again.')
+    } finally {
+      setDeletingUid(null)
     }
   }
 
@@ -357,31 +389,58 @@ export default function Drivers() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              setOpenMenuUid(openMenuUid === driver.uid ? null : driver.uid)
+                              if (openMenuUid === driver.uid) {
+                                setOpenMenuUid(null)
+                                setMenuPosition(null)
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                setMenuPosition({
+                                  top: rect.bottom + 4,
+                                  left: rect.right - 144,
+                                })
+                                setOpenMenuUid(driver.uid)
+                              }
                             }}
                             className="w-8 h-8 flex items-center justify-center rounded-md text-text-tertiary hover:text-text-primary hover:bg-neutral-100 transition-colors"
                             aria-label="Driver actions"
                           >
                             <MoreHorizontal size={16} />
                           </button>
-                          {openMenuUid === driver.uid && (
-                            <div className="absolute right-0 top-9 z-20 w-36 bg-white border border-gray-200 rounded-card shadow-md py-1">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleSuspendToggle(driver)
-                                }}
-                                disabled={suspendingUid === driver.uid}
-                                className="w-full text-left px-4 py-2 text-sm hover:bg-neutral-50 disabled:opacity-50 transition-colors"
+                          {openMenuUid === driver.uid &&
+                            menuPosition &&
+                            createPortal(
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ top: menuPosition.top, left: menuPosition.left }}
+                                className="fixed z-50 w-36 bg-white border border-gray-200 rounded-card shadow-md py-1"
                               >
-                                {suspendingUid === driver.uid
-                                  ? 'Updating…'
-                                  : driver.isSuspended
-                                    ? 'Enable account'
-                                    : 'Disable account'}
-                              </button>
-                            </div>
-                          )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleSuspendToggle(driver)
+                                  }}
+                                  disabled={suspendingUid === driver.uid}
+                                  className="w-full text-left px-4 py-2 text-sm hover:bg-neutral-50 disabled:opacity-50 transition-colors"
+                                >
+                                  {suspendingUid === driver.uid
+                                    ? 'Updating…'
+                                    : driver.isSuspended
+                                      ? 'Enable account'
+                                      : 'Disable account'}
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDeleteAccount(driver)
+                                  }}
+                                  disabled={deletingUid === driver.uid}
+                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+                                >
+                                  {deletingUid === driver.uid ? 'Deleting…' : 'Delete account'}
+                                </button>
+                              </div>,
+                              document.body,
+                            )}
                         </div>
                       </td>
                     </tr>
