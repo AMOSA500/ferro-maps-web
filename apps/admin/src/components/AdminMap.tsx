@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { GoogleMap, useJsApiLoader, Marker, MarkerClusterer } from '@react-google-maps/api'
 import { MapPin } from 'lucide-react'
 import { collection, onSnapshot, GeoPoint } from 'firebase/firestore'
+import * as ngeohash from 'ngeohash'
 import { db } from '../lib/firebase'
 import { useDriverFilters } from '../hooks/useDriverFilters'
 import type { ZoneFilter } from '../hooks/useDriverFilters'
@@ -18,12 +19,67 @@ const MAP_OPTIONS: google.maps.MapOptions = {
   fullscreenControl: true,
   streetViewControl: false,
   mapTypeControl: false,
+  styles: [
+    {
+      featureType: 'poi',
+      stylers: [{ visibility: 'off' }],
+    },
+    {
+      featureType: 'poi.business',
+      stylers: [{ visibility: 'off' }],
+    },
+    {
+      featureType: 'poi.attraction',
+      stylers: [{ visibility: 'off' }],
+    },
+    {
+      featureType: 'poi.government',
+      stylers: [{ visibility: 'off' }],
+    },
+    {
+      featureType: 'poi.medical',
+      stylers: [{ visibility: 'off' }],
+    },
+    {
+      featureType: 'poi.park',
+      elementType: 'labels',
+      stylers: [{ visibility: 'off' }],
+    },
+    {
+      featureType: 'poi.school',
+      stylers: [{ visibility: 'off' }],
+    },
+    {
+      featureType: 'poi.sports_complex',
+      stylers: [{ visibility: 'off' }],
+    },
+    {
+      featureType: 'transit',
+      stylers: [{ visibility: 'off' }],
+    },
+    {
+      featureType: 'transit.station',
+      stylers: [{ visibility: 'off' }],
+    },
+  ],
 }
 
 
-const MARKER_SVG = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44"><circle cx="22" cy="22" r="22" fill="#1E7BFF"/></svg>'
-)}`
+function pinSvg(fillColor: string): string {
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="28" viewBox="0 0 22 28"><path d="M11 0C4.925 0 0 4.925 0 11c0 7.7 11 17 11 17s11-9.3 11-17C22 4.925 17.075 0 11 0z" fill="${fillColor}"/><circle cx="11" cy="11" r="4" fill="white"/></svg>`
+  )}`
+}
+
+const MARKER_ONLINE = pinSvg('#16A34A')
+const MARKER_OFFLINE = pinSvg('#6B7892')
+const MARKER_SUSPENDED = pinSvg('#DC2626')
+
+function markerIconFor(driver: Driver): string {
+  if (driver.isSuspended) return MARKER_SUSPENDED
+  if (driver.isOnline) return MARKER_ONLINE
+  return MARKER_OFFLINE
+}
 
 const STATUS_PILLS = [
   { value: 'all', label: 'All' },
@@ -61,7 +117,26 @@ function AdminMap() {
         const all: Driver[] = []
         snapshot.forEach((doc) => {
           const data = doc.data()
-          if (!(data.location instanceof GeoPoint)) return
+
+          let lat: number | undefined
+          let lng: number | undefined
+
+          if (typeof data.location === 'string' && data.location.length > 0) {
+            try {
+              const decoded = ngeohash.decode(data.location)
+              lat = decoded.latitude
+              lng = decoded.longitude
+            } catch (err) {
+              console.warn(`Could not decode geohash for driver ${doc.id}:`, err)
+              return
+            }
+          } else if (data.location instanceof GeoPoint) {
+            lat = data.location.latitude
+            lng = data.location.longitude
+          } else {
+            return
+          }
+
           all.push({
             uid: data.uid ?? doc.id,
             name: data.name ?? 'Unknown',
@@ -69,8 +144,8 @@ function AdminMap() {
             phoneNumber: data.phoneNumber ?? '',
             ferroBalance: typeof data.ferroBalance === 'number' ? data.ferroBalance : 0,
             country: data.country ?? '',
-            lat: data.location.latitude,
-            lng: data.location.longitude,
+            lat,
+            lng,
             locationUpdatedAt: data.locationUpdatedAt ?? null,
             isOnline: data.isOnline ?? false,
             isSuspended: data.isSuspended ?? false,
@@ -79,6 +154,24 @@ function AdminMap() {
           })
         })
         console.log('Drivers loaded:', all.length)
+
+        const groups = new Map<string, Driver[]>()
+        for (const d of all) {
+          const key = `${d.lat.toFixed(5)},${d.lng.toFixed(5)}`
+          const group = groups.get(key) ?? []
+          group.push(d)
+          groups.set(key, group)
+        }
+        const OFFSET_DEGREES = 0.0004
+        for (const group of groups.values()) {
+          if (group.length <= 1) continue
+          group.forEach((d, i) => {
+            const angle = (2 * Math.PI * i) / group.length
+            d.lat += OFFSET_DEGREES * Math.cos(angle)
+            d.lng += OFFSET_DEGREES * Math.sin(angle)
+          })
+        }
+
         setDrivers(all)
         setDriversLoaded(true)
       },
@@ -185,17 +278,10 @@ function AdminMap() {
                       clusterer={clusterer}
                       position={{ lat: driver.lat, lng: driver.lng }}
                       title={driver.name}
-                      label={{
-                        text: driver.name.split(' ')[0],
-                        color: 'white',
-                        fontWeight: '600',
-                        fontSize: '11px',
-                        fontFamily: 'Nunito, sans-serif',
-                      }}
                       icon={{
-                        url: MARKER_SVG,
-                        scaledSize: new window.google.maps.Size(44, 44),
-                        anchor: new window.google.maps.Point(22, 22),
+                        url: markerIconFor(driver),
+                        scaledSize: new window.google.maps.Size(22, 28),
+                        anchor: new window.google.maps.Point(11, 28),
                       }}
                       onClick={() => setSelectedUid(driver.uid)}
                     />
