@@ -45,7 +45,7 @@ service cloud.firestore {
       allow create: if request.auth != null
                     && request.auth.token.role == 'admin'
                     && request.resource.data.requestedBy == request.auth.uid
-                    && request.resource.data.type in ['suspend', 'unsuspend', 'delete']
+                    && request.resource.data.type in ['suspend', 'unsuspend', 'delete', 'resetStats']
                     && request.resource.data.uid is string
                     && request.resource.data.status == 'pending';
       allow read: if request.auth != null && request.auth.token.role == 'admin';
