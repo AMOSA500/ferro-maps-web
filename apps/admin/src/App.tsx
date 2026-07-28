@@ -7,7 +7,7 @@ import CreateAccount from './pages/CreateAccount'
 import Dashboard from './pages/Dashboard'
 import Drivers from './pages/Drivers'
 import Rankings from './pages/Rankings'
-import ComingSoon from './pages/ComingSoon'
+import Settings from './pages/Settings'
 import Messages from './pages/Messages'
 
 export default function App() {
@@ -53,7 +53,7 @@ export default function App() {
             path="/settings"
             element={
               <ProtectedRoute>
-                <ComingSoon label="Settings" />
+                <Settings />
               </ProtectedRoute>
             }
           />
