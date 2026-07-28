@@ -1,7 +1,7 @@
 import { collection, addDoc, onSnapshot, serverTimestamp, type DocumentReference } from 'firebase/firestore'
 import { db, auth } from './firebase'
 
-export type AccountActionType = 'suspend' | 'unsuspend' | 'delete'
+export type AccountActionType = 'suspend' | 'unsuspend' | 'delete' | 'resetStats'
 
 /**
  * Submits an accountActions request document and waits for the Firestore-triggered
