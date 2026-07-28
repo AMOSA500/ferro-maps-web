@@ -1,0 +1,116 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users — only owner can read/write their own document
+    match /users/{userId} {
+      allow create: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.uid == userId
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() >= 2
+                    && request.resource.data.country is string
+                    && request.resource.data.country.size() <= 50;
+
+      allow read: if request.auth != null
+            && (request.auth.uid == userId || request.auth.token.role == 'admin');
+
+      allow update: if request.auth != null
+              && (
+                (request.auth.uid == userId
+                 && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdAt', 'uid']))
+                ||
+                (request.auth.token.role == 'admin'
+                 && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isSuspended', 'suspendedAt']))
+              );
+
+      allow delete: if request.auth != null && request.auth.uid == userId; // users are now able to delete their own accounts.
+
+
+      // Ferro earnings subcollection
+      match /ferroEarnings/{earningId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null
+                      && request.auth.uid == userId
+                      && request.resource.data.hotspotId == earningId
+                      && request.resource.data.amount is int
+                      && request.resource.data.amount > 0;
+        allow update, delete: if false;
+      }
+    }
+
+    // Account actions — admins submit requests here; onAccountAction Cloud
+    // Function (using the Admin SDK) processes them and writes the result back.
+    match /accountActions/{actionId} {
+      allow create: if request.auth != null
+                    && request.auth.token.role == 'admin'
+                    && request.resource.data.requestedBy == request.auth.uid
+                    && request.resource.data.type in ['suspend', 'unsuspend', 'delete']
+                    && request.resource.data.uid is string
+                    && request.resource.data.status == 'pending';
+      allow read: if request.auth != null && request.auth.token.role == 'admin';
+      allow update, delete: if false;
+    }
+
+    // Hotspots — any authenticated user can read; only Cloud Functions can write
+    match /hotspots/{hotspotId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Hotspots_prod: any authenticated user can read, only backend can write
+    match /hotspots_prod/{hotspotId} {
+      allow read: if true; //allow read
+      allow create: if request.auth != null; //authenticated users can add eggs
+      allow update: if request.auth != null; //authenticated users can change the contribute number on egg
+      allow delete: if false; //cannot delete
+    }
+
+    // Hotspots_test: any authenticated user can read, only backend can write
+    match /hotspots_test/{hotspotId} {
+      allow read: if request.auth != null;
+      allow write: if false;  // only the Admin SDK (Cloud Function) writes
+    }
+
+    // Waitlist — public write, one-time only per document ID, no client reads
+    match /waitlist/{docId} {
+      allow create: if resource == null;
+      allow read, update, delete: if false;
+    }
+
+    // Rate limits — Cloud Functions only (Admin SDK bypasses rules)
+    match /rateLimits/{docId} {
+      allow read, write: if false;
+    }
+
+    // Support requests — public create (contact form), admin read/update only
+    match /supportRequests/{docId} {
+      allow create: if true;
+      allow read: if request.auth != null;
+      allow update: if request.auth != null
+                    && (request.auth.token.role == 'admin'
+                        || request.auth != null);
+      allow delete: if false;
+    }
+
+    // Phone number registry
+    match /phone_registry/{e164} {
+      allow read:  if true;                    // public — needed for pre-auth login check
+      allow write: if request.auth != null;    // only authenticated users can register
+    }
+
+    // Block everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // events — read
+    match /events/{document} {
+      allow read: if true; //allow read
+      allow create: if request.auth != null; //authenticated users can add eggs
+      allow update: if request.auth != null; //authenticated users can change the contribute number on egg
+      allow delete: if false; //cannot delete
+    }
+
+  }
+}
