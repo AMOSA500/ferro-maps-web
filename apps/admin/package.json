@@ -17,6 +17,7 @@
     "@sentry/react": "^10.63.0",
     "firebase": "^12.13.0",
     "lucide-react": "^1.16.0",
+    "ngeohash": "^0.6.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.17.0"
@@ -25,6 +26,7 @@
     "@eslint/js": "^10.0.1",
     "@ferro-maps/config": "workspace:*",
     "@types/google.maps": "^3.65.2",
+    "@types/ngeohash": "^0.6.8",
     "@types/node": "^24.12.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
