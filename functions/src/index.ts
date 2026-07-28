@@ -399,6 +399,21 @@ export const onAccountAction = onDocumentCreated(
         } catch (err) {
           logger.warn(`onAccountAction: could not delete auth user for uid=${uid}`, err);
         }
+      } else if (type === "resetStats") {
+        const userRef = db.collection("users").doc(uid);
+        const userSnap = await userRef.get();
+        if (!userSnap.exists) {
+          throw new Error("Driver account not found.");
+        }
+
+        await db.recursiveDelete(userRef.collection("ferroEarnings"));
+
+        await userRef.update({
+          ferroBalance: 0,
+          xp: 0,
+          level: 1,
+          dayStreak: 0,
+        });
       } else {
         throw new Error(`Unknown action type: ${type}`);
       }
