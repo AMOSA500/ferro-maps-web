@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { GoogleMap, useJsApiLoader, Marker, MarkerClusterer } from '@react-google-maps/api'
-import { MapPin } from 'lucide-react'
+import { MapPin, Maximize2, Minimize2, Crosshair } from 'lucide-react'
 import { collection, onSnapshot, GeoPoint } from 'firebase/firestore'
 import * as ngeohash from 'ngeohash'
 import { db } from '../lib/firebase'
@@ -16,7 +16,7 @@ const MAP_CONTAINER_STYLE = { width: '100%', height: '100%' }
 const MAP_OPTIONS: google.maps.MapOptions = {
   disableDefaultUI: false,
   zoomControl: true,
-  fullscreenControl: true,
+  fullscreenControl: false,
   streetViewControl: false,
   mapTypeControl: false,
   styles: [
@@ -67,7 +67,7 @@ const MAP_OPTIONS: google.maps.MapOptions = {
 
 function pinSvg(fillColor: string): string {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="28" viewBox="0 0 22 28"><path d="M11 0C4.925 0 0 4.925 0 11c0 7.7 11 17 11 17s11-9.3 11-17C22 4.925 17.075 0 11 0z" fill="${fillColor}"/><circle cx="11" cy="11" r="4" fill="white"/></svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="40" viewBox="0 0 32 40"><path d="M16 0C7.163 0 0 7.163 0 16c0 11 16 24 16 24s16-13 16-24C32 7.163 24.837 0 16 0z" fill="${fillColor}"/><circle cx="16" cy="16" r="6" fill="white"/></svg>`
   )}`
 }
 
@@ -106,6 +106,10 @@ function AdminMap() {
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [selectedUid, setSelectedUid] = useState<string | null>(null)
   const [driversLoaded, setDriversLoaded] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  const mapRef = useRef<google.maps.Map | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
 
   const { statusFilter, setStatusFilter, zoneFilter, setZoneFilter, filteredDrivers } =
     useDriverFilters(drivers)
@@ -134,6 +138,24 @@ function AdminMap() {
             lat = data.location.latitude
             lng = data.location.longitude
           } else {
+            return
+          }
+
+          if (
+            lat === undefined ||
+            lng === undefined ||
+            Number.isNaN(lat) ||
+            Number.isNaN(lng) ||
+            lat < -90 ||
+            lat > 90 ||
+            lng < -180 ||
+            lng > 180
+          ) {
+            console.warn(`Skipping driver ${doc.id} — invalid coordinates after decode:`, {
+              location: data.location,
+              lat,
+              lng,
+            })
             return
           }
 
@@ -180,6 +202,44 @@ function AdminMap() {
     return unsubscribe
   }, [])
 
+  function fitToDrivers() {
+    const map = mapRef.current
+    if (!map || !window.google) return
+
+    if (filteredDrivers.length === 0) return
+
+    if (filteredDrivers.length === 1) {
+      map.panTo({ lat: filteredDrivers[0].lat, lng: filteredDrivers[0].lng })
+      map.setZoom(14)
+      return
+    }
+
+    const bounds = new window.google.maps.LatLngBounds()
+    filteredDrivers.forEach((d) => bounds.extend({ lat: d.lat, lng: d.lng }))
+    map.fitBounds(bounds, 60)
+  }
+
+  useEffect(() => {
+    if (!driversLoaded) return
+    fitToDrivers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [driversLoaded, statusFilter, zoneFilter])
+
+  useEffect(() => {
+    const handleChange = () => setIsFullscreen(document.fullscreenElement === containerRef.current)
+    document.addEventListener('fullscreenchange', handleChange)
+    return () => document.removeEventListener('fullscreenchange', handleChange)
+  }, [])
+
+  function toggleFullscreen() {
+    if (!containerRef.current) return
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      containerRef.current.requestFullscreen()
+    }
+  }
+
   if (!apiKey) {
     return (
       <div className="w-full h-full rounded-card overflow-hidden bg-neutral-100 flex flex-col items-center justify-center gap-3 p-4">
@@ -201,8 +261,7 @@ function AdminMap() {
     : null
 
   return (
-    <>
-      {/* Filter bar — outside the map container */}
+    <div ref={containerRef} className="flex flex-col flex-1 w-full h-full relative bg-white">
       <div className="bg-white px-3 py-2 border-b border-gray-200 flex flex-wrap items-center gap-2 flex-shrink-0">
         <div className="flex gap-1">
           {STATUS_PILLS.map(({ value, label }) => (
@@ -232,9 +291,8 @@ function AdminMap() {
         </select>
       </div>
 
-      {/* Map container — fills remaining height */}
       <div className="relative flex-1 w-full rounded-card overflow-hidden">
-        <div className="absolute top-3 left-3 z-10">
+        <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
           {count > 0 ? (
             <span className="bg-white text-ferro-primary text-xs font-medium px-2 py-1 rounded-full shadow-sm">
               {count} {driverWord}{statusLabel}
@@ -244,7 +302,23 @@ function AdminMap() {
               No drivers shown
             </span>
           )}
+          <button
+            onClick={fitToDrivers}
+            title="Fit all drivers on screen"
+            className="bg-white text-text-secondary hover:text-ferro-primary p-1.5 rounded-full shadow-sm transition-colors"
+          >
+            <Crosshair size={14} />
+          </button>
         </div>
+
+        <button
+          onClick={toggleFullscreen}
+          title={isFullscreen ? 'Exit fullscreen' : 'View fullscreen'}
+          className="absolute top-3 right-3 z-10 bg-white text-text-secondary hover:text-ferro-primary p-2 rounded-md shadow-sm transition-colors"
+        >
+          {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+        </button>
+
         {loadError ? (
           <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-4">
             <MapPin size={32} className="text-neutral-300" />
@@ -263,6 +337,9 @@ function AdminMap() {
             zoom={11}
             options={MAP_OPTIONS}
             onClick={() => setSelectedUid(null)}
+            onLoad={(map) => {
+              mapRef.current = map
+            }}
           >
             <MarkerClusterer
               options={{
@@ -280,8 +357,8 @@ function AdminMap() {
                       title={driver.name}
                       icon={{
                         url: markerIconFor(driver),
-                        scaledSize: new window.google.maps.Size(22, 28),
-                        anchor: new window.google.maps.Point(11, 28),
+                        scaledSize: new window.google.maps.Size(32, 40),
+                        anchor: new window.google.maps.Point(16, 40),
                       }}
                       onClick={() => setSelectedUid(driver.uid)}
                     />
@@ -294,7 +371,7 @@ function AdminMap() {
       </div>
 
       <DriverDrawer driver={selectedDriver} onClose={() => setSelectedUid(null)} />
-    </>
+    </div>
   )
 }
 
