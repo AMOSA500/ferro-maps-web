@@ -8,36 +8,58 @@ import { auth } from '../lib/firebase'
 import ferroLogo from '../assets/ferro-logo-2.png'
 import { doc, getDoc, updateDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import avatarCrow from '../assets/avatars/ferro-bird-crow.png'
-import avatarDetective from '../assets/avatars/ferro-bird-detective.png'
-import avatarFalcon from '../assets/avatars/ferro-bird-falcon.png'
-import avatarGamer from '../assets/avatars/ferro-bird-gamer.png'
-import avatarNinja from '../assets/avatars/ferro-bird-ninja.png'
-import avatarPhoenix from '../assets/avatars/ferro-bird-phoenix.png'
-import avatarSuperhero from '../assets/avatars/ferro-bird-superhero.png'
-import avatarVillain from '../assets/avatars/ferro-bird-villain.png'
+import { Lock } from 'lucide-react'
+import skinClassic from '../assets/skins/ferro-bird-classic.png'
+import skinNinja from '../assets/skins/ferro-bird-ninja.png'
+import skinDetective from '../assets/skins/ferro-bird-detective.png'
+import skinGamer from '../assets/skins/ferro-bird-gamer.png'
+import skinSuperhero from '../assets/skins/ferro-bird-superhero.png'
+import skinVillain from '../assets/skins/ferro-bird-villain.png'
+import friendCrow from '../assets/friends/ferro-bird-crow.png'
+import friendFalcon from '../assets/friends/ferro-bird-falcon.png'
+import friendParrot from '../assets/friends/ferro-bird-parrot.png'
+import friendMagpie from '../assets/friends/ferro-bird-magpie.png'
+import friendRobin from '../assets/friends/ferro-bird-robin.png'
+import friendHummingbird from '../assets/friends/ferro-bird-hummingbrd.png'
+import { getLevelProgress } from '../lib/levelThresholds'
 
 type Tab = 'profile' | 'history' | 'settings'
 
-const AVATARS = [
-  { id: 'crow', src: avatarCrow, label: 'Crow' },
-  { id: 'detective', src: avatarDetective, label: 'Detective' },
-  { id: 'falcon', src: avatarFalcon, label: 'Golden Falcon' },
-  { id: 'gamer', src: avatarGamer, label: 'Gamer' },
-  { id: 'ninja', src: avatarNinja, label: 'Ninja' },
-  { id: 'phoenix', src: avatarPhoenix, label: 'Phoenix' },
-  { id: 'superhero', src: avatarSuperhero, label: 'Superhero' },
-  { id: 'villain', src: avatarVillain, label: 'Villain' },
-  { id: 'ferro2', src: '/ferro-bird-2.png', label: 'Ferro' },
+interface AvatarOption {
+  id: string
+  src: string
+  label: string
+  requiredLevel: number
+}
+
+const SKINS: AvatarOption[] = [
+  { id: 'skin-default', src: skinClassic, label: 'Classic', requiredLevel: 1 },
+  { id: 'skin-ninja', src: skinNinja, label: 'Ninja', requiredLevel: 4 },
+  { id: 'skin-detective', src: skinDetective, label: 'Detective', requiredLevel: 9 },
+  { id: 'skin-gamer', src: skinGamer, label: 'Gamer', requiredLevel: 12 },
+  { id: 'skin-superhero', src: skinSuperhero, label: 'Superhero', requiredLevel: 14 },
+  { id: 'skin-villain', src: skinVillain, label: 'Villain', requiredLevel: 17 },
 ]
 
+const FRIENDS: AvatarOption[] = [
+  { id: 'friend-crow', src: friendCrow, label: 'Crow', requiredLevel: 5 },
+  { id: 'friend-falcon', src: friendFalcon, label: 'Falcon', requiredLevel: 8 },
+  { id: 'friend-parrot', src: friendParrot, label: 'Parrot', requiredLevel: 11 },
+  { id: 'friend-magpie', src: friendMagpie, label: 'Magpie', requiredLevel: 15 },
+  { id: 'friend-robin', src: friendRobin, label: 'Robin', requiredLevel: 18 },
+  { id: 'friend-hummingbird', src: friendHummingbird, label: 'Hummingbird', requiredLevel: 20 },
+]
+
+const ALL_AVATARS = [...SKINS, ...FRIENDS]
+
 function ProfileSection() {
-  const [userData, setUserData] = useState<{ displayName: string, ferroBalance: number, country: string, avatarId: string } | null>(null)
+  const [userData, setUserData] = useState<{ name: string, ferroBalance: number, country: string, selectedAvatar: string, xp: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [editMode, setEditMode] = useState(false)
   const [editName, setEditName] = useState('')
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  const [pickerTab, setPickerTab] = useState<'skins' | 'friends'>('skins')
   const [saving, setSaving] = useState(false)
 
   const { user } = useAuth()
@@ -53,12 +75,13 @@ function ProfileSection() {
         if (snap.exists()) {
           const data = snap.data()
           setUserData({
-            displayName: data.displayName || '',
+            name: data.name || '',
             ferroBalance: data.ferroBalance || 0,
             country: data.country || 'GB',
-            avatarId: data.avatarId || '',
+            selectedAvatar: data.selectedAvatar || '',
+            xp: typeof data.xp === 'number' ? data.xp : 0,
           })
-          setEditName(data.displayName || '')
+          setEditName(data.name || '')
         }
       } catch {
         setError('Failed to load profile.')
@@ -74,19 +97,21 @@ function ProfileSection() {
   if (error) return <p className="text-red-500 text-center p-8">{error}</p>
   if (!userData) return null
 
+  const progress = getLevelProgress(userData.xp)
+
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
       <div className="bg-ferro-primary p-8 flex flex-col items-center">
         <div className="w-24 h-24 rounded-full border-4 border-white overflow-hidden">
-          {userData.avatarId ? (
-            <img src={AVATARS.find(a => a.id === userData.avatarId)?.src} alt="avatar" className="w-full h-full object-cover" />
+          {userData.selectedAvatar ? (
+            <img src={ALL_AVATARS.find(a => a.id === userData.selectedAvatar)?.src} alt="avatar" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-ferro-deep flex items-center justify-center text-white text-3xl font-bold">
-              {userData.displayName.charAt(0).toUpperCase()}
+              {userData.name.charAt(0).toUpperCase()}
             </div>
           )}
         </div>
-        <h2 className="text-white text-2xl font-bold mt-4">{userData.displayName}</h2>
+        <h2 className="text-white text-2xl font-bold mt-4">{userData.name}</h2>
         <p className="text-white opacity-80 text-sm mt-1">{user.phoneNumber}</p>
         <button onClick={() => setShowAvatarPicker(p => !p)} className="text-white text-sm underline opacity-80 mt-2 cursor-pointer">
           {showAvatarPicker ? 'Close avatar picker' : 'Change Avatar'}
@@ -95,26 +120,91 @@ function ProfileSection() {
 
       {showAvatarPicker && (
         <div className="bg-white p-6 border-b border-gray-100">
-          <p className="text-ferro-ink font-semibold mb-4">Choose your avatar</p>
-          <div className="grid grid-cols-4 gap-3">
-            {AVATARS.map(avatar => (
-              <button
-                key={avatar.id}
-                onClick={async () => {
-                  if (!user) return
-                  await updateDoc(doc(db, 'users', user.uid), { avatarId: avatar.id })
-                  setUserData(prev => prev ? { ...prev, avatarId: avatar.id } : prev)
-                }}
-                className={`aspect-square overflow-hidden rounded-xl ${userData.avatarId === avatar.id ? 'ring-2 ring-ferro-primary' : 'opacity-70 hover:opacity-100'}`}
-              >
-                <img src={avatar.src} alt={avatar.label} className="w-full h-full object-cover" />
-              </button>
-            ))}
+          <p className="text-ferro-ink font-semibold mb-1">Avatar Locker</p>
+          <p className="text-neutral-500 text-xs mb-4">Dress up Ferro. Unlock more looks along your journey.</p>
+
+          <div className="flex bg-gray-100 rounded-xl p-1 mb-4">
+            <button
+              onClick={() => setPickerTab('skins')}
+              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                pickerTab === 'skins' ? 'bg-white text-ferro-ink shadow-sm' : 'text-neutral-500'
+              }`}
+            >
+              Skins
+            </button>
+            <button
+              onClick={() => setPickerTab('friends')}
+              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                pickerTab === 'friends' ? 'bg-white text-ferro-ink shadow-sm' : 'text-neutral-500'
+              }`}
+            >
+              Friends
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            {(pickerTab === 'skins' ? SKINS : FRIENDS).map(avatar => {
+              const isLocked = progress.current.level < avatar.requiredLevel
+              const isSelected = userData.selectedAvatar === avatar.id
+              return (
+                <button
+                  key={avatar.id}
+                  disabled={isLocked}
+                  onClick={async () => {
+                    if (!user || isLocked) return
+                    await updateDoc(doc(db, 'users', user.uid), { selectedAvatar: avatar.id })
+                    setUserData(prev => prev ? { ...prev, selectedAvatar: avatar.id } : prev)
+                  }}
+                  className={`relative flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-colors ${
+                    isSelected ? 'border-ferro-primary bg-ferro-tint' : 'border-transparent'
+                  } ${isLocked ? 'cursor-not-allowed' : 'hover:bg-gray-50'}`}
+                  title={isLocked ? `Unlocks at Level ${avatar.requiredLevel}` : avatar.label}
+                >
+                  <div className="relative aspect-square w-full overflow-hidden rounded-xl">
+                    <img
+                      src={avatar.src}
+                      alt={avatar.label}
+                      className={`w-full h-full object-cover ${isLocked ? 'grayscale opacity-50' : ''}`}
+                    />
+                    {isLocked && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                        <div className="bg-white/90 rounded-full p-1.5">
+                          <Lock size={14} className="text-neutral-600" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-xs font-medium text-neutral-700">{avatar.label}</span>
+                  {isLocked && (
+                    <span className="text-[10px] font-semibold text-neutral-400">Lvl. {avatar.requiredLevel}</span>
+                  )}
+                </button>
+              )
+            })}
           </div>
         </div>
       )}
 
       <div className="p-8">
+        <div className="bg-gradient-to-r from-ferro-primary to-ferro-deep rounded-xl p-5 mb-6 text-white">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-semibold uppercase tracking-wide opacity-90">Level {progress.current.level} · {progress.current.name}</p>
+            <p className="text-lg font-bold">{userData.xp.toLocaleString()} XP</p>
+          </div>
+          {progress.next ? (
+            <>
+              <div className="h-2 rounded-full bg-white/25 overflow-hidden mt-2">
+                <div className="h-full bg-white rounded-full" style={{ width: `${progress.progressPercent}%` }} />
+              </div>
+              <p className="text-xs opacity-90 mt-1.5">
+                {progress.xpIntoLevel}/{progress.xpForNextLevel} XP to Level {progress.next.level} · {progress.next.name}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs opacity-90 mt-1.5">Max level reached!</p>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="bg-ferro-tint rounded-xl p-4">
             <p className="text-ferro-primary text-xs font-semibold uppercase tracking-wide">Ferro Balance</p>
@@ -144,8 +234,8 @@ function ProfileSection() {
                 onClick={async () => {
                   if (!user) return
                   setSaving(true)
-                  await updateDoc(doc(db, 'users', user.uid), { displayName: editName })
-                  setUserData(prev => prev ? { ...prev, displayName: editName } : prev)
+                  await updateDoc(doc(db, 'users', user.uid), { name: editName })
+                  setUserData(prev => prev ? { ...prev, name: editName } : prev)
                   setEditMode(false)
                   setSaving(false)
                 }}
@@ -386,7 +476,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar (desktop only) */}
       <div className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200 min-h-screen">
         <div className="px-6 py-5 flex items-center gap-3 border-b border-gray-100">
           <Link to="/" className="flex items-center gap-3">
@@ -423,9 +512,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Main content area */}
       <div className="flex-1 flex flex-col">
-        {/* Top bar (mobile only) */}
         <div className="md:hidden flex items-center justify-between px-4 py-4 bg-white border-b border-gray-200">
           <Link to="/" className="flex items-center gap-3">
             <img src={ferroLogo} alt="Ferro Maps" className="w-7 h-7 rounded-lg" />
@@ -436,7 +523,6 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Content area */}
         <div className="flex-1 p-6 md:p-8 overflow-y-auto pb-20 md:pb-8">
           {tab === 'profile' && <ProfileSection />}
           {tab === 'history' && <HistorySection />}
@@ -444,7 +530,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Bottom tab bar (mobile only) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex">
         {navItems.map(({ id, label }) => (
           <button
