@@ -66,7 +66,6 @@ function ProfileSection() {
 
   useEffect(() => {
     if (!user) {
-      setLoading(false)
       return
     }
     const unsubscribe = onSnapshot(
