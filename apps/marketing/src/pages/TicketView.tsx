@@ -1,12 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { httpsCallable, FunctionsError } from 'firebase/functions'
-import { functions } from '../lib/firebase'
+import { db } from '../lib/firebase'
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  arrayUnion,
+  Timestamp,
+} from 'firebase/firestore'
 import { XCircle, CheckCircle } from 'lucide-react'
 
 interface Reply {
   text: string
-  sentAt: string | { _seconds: number; _nanoseconds: number } | null
+  sentAt: Timestamp | string
   sentBy: string
 }
 
@@ -17,19 +23,34 @@ interface TicketData {
   message: string
   status: 'open' | 'closed'
   replies: Reply[]
-  submittedAt: string | null
+  submittedAt: Timestamp | string | null
 }
 
-function formatDate(value: string | { _seconds: number; _nanoseconds: number } | null): string {
+async function verifyToken(
+  token: string
+): Promise<{ ticketId: string; email: string } | null> {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 2) return null
+    const [b64] = parts
+    const base64 = b64
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(b64.length + (4 - (b64.length % 4)) % 4, '=')
+    const payload = atob(base64)
+    console.log('Decoded payload:', payload)
+    const [ticketId, email] = payload.split(':')
+    if (!ticketId || !email) return null
+    return { ticketId, email }
+  } catch {
+    return null
+  }
+}
+
+function formatDate(value: Timestamp | string | null): string {
   if (!value) return ''
-  if (typeof value === 'string') {
-    const d = new Date(value)
-    return isNaN(d.getTime()) ? '' : d.toLocaleDateString()
-  }
-  if (typeof value === 'object' && '_seconds' in value) {
-    return new Date(value._seconds * 1000).toLocaleDateString()
-  }
-  return ''
+  if (value instanceof Timestamp) return value.toDate().toLocaleDateString()
+  return new Date(value).toLocaleDateString()
 }
 
 function formatTicketNumber(n: number): string {
@@ -47,22 +68,48 @@ export default function TicketView() {
 
   useEffect(() => {
     async function loadTicket() {
-      if (!token) {
-        setError('This link is invalid or has expired. Please contact support@ferromaps.com')
-        setLoading(false)
-        return
-      }
       try {
-        const validateTicketToken = httpsCallable<{ token: string }, TicketData>(
-          functions,
-          'validateTicketToken',
-        )
-        const result = await validateTicketToken({ token })
-        setTicketData(result.data)
-      } catch (err) {
-        console.error('TicketView error:', err)
-        if (err instanceof FunctionsError && err.code === 'functions/failed-precondition') {
+        const parsed = await verifyToken(token ?? '')
+        if (!parsed) {
+          setError('This link is invalid or has expired. Please contact support@ferromaps.com')
+          return
+        }
+        const { ticketId, email } = parsed
+        console.log('Fetching ticket:', ticketId)
+        const ticketSnap = await getDoc(doc(db, 'supportRequests', ticketId))
+        console.log('Ticket exists:', ticketSnap.exists())
+        console.log('Ticket email:', ticketSnap.data()?.email)
+        console.log('Ticket data:', ticketSnap.data())
+        if (!ticketSnap.exists()) {
+          setError('Ticket not found')
+          return
+        }
+        const data = ticketSnap.data()
+        if (data.email !== email) {
+          setError('This link is invalid or has expired. Please contact support@ferromaps.com')
+          return
+        }
+        if (data.status === 'closed') {
           setError('This ticket has been closed and can no longer be replied to.')
+          return
+        }
+        setTicketData({
+          ticketId,
+          ticketNumber: data.ticketNumber,
+          subject: data.subject,
+          message: data.message,
+          status: data.status,
+          replies: data.replies ?? [],
+          submittedAt: data.submittedAt ?? null,
+        })
+      } catch (err: unknown) {
+        console.error('TicketView error:', err)
+        if (err instanceof Error) {
+          if (err.message.includes('closed')) {
+            setError('This ticket has been closed and can no longer be replied to.')
+          } else {
+            setError('This link is invalid or has expired. Please contact support@ferromaps.com')
+          }
         } else {
           setError('This link is invalid or has expired. Please contact support@ferromaps.com')
         }
@@ -74,14 +121,16 @@ export default function TicketView() {
   }, [token])
 
   async function handleSubmitReply() {
-    if (!replyText.trim() || submitting || !ticketData || !token) return
+    if (!replyText.trim() || submitting || !ticketData) return
     setSubmitting(true)
     try {
-      const submitDriverReply = httpsCallable<{ token: string; replyText: string }, { success: boolean }>(
-        functions,
-        'submitDriverReply',
-      )
-      await submitDriverReply({ token, replyText: replyText.trim() })
+      await updateDoc(doc(db, 'supportRequests', ticketData.ticketId), {
+        replies: arrayUnion({
+          text: replyText.trim(),
+          sentAt: Timestamp.now(),
+          sentBy: 'driver',
+        }),
+      })
       setSubmitted(true)
       setReplyText('')
     } catch {
