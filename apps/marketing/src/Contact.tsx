@@ -81,7 +81,7 @@ export default function Contact() {
             </span>
 
             <span className="text-[11px] font-semibold text-neutral-900">
-              support@ferromaps.com
+              admin@ferromaps.com
             </span>
           </div>
 
