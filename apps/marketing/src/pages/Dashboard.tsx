@@ -348,8 +348,9 @@ function SettingsSection() {
     setError('')
     setSuccess('')
     try {
-      if (!auth.currentUser) return
+      if (!auth.currentUser || !user) return
       await updateEmail(auth.currentUser, email)
+      await updateDoc(doc(db, 'users', user.uid), { email })
       setSuccess('Email updated successfully.')
       setEmail('')
     } catch {
