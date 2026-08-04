@@ -246,6 +246,44 @@ export const onTicketUpdated = onDocumentUpdated(
         logger.error(`onTicketUpdated: failed to send closed notification to ${email}`, err);
       }
     }
+
+    // CASE C: status changed from closed back to open (reopened)
+    if (beforeData.status === "closed" && afterData.status !== "closed") {
+      const reopenToken = generateToken(
+        event.params.ticketId,
+        afterData.email,
+        ticketSecret.value()
+      );
+      const reopenReplyUrl = `${MARKETING_SITE_URL}/ticket/${reopenToken}`;
+      try {
+        await sgMail.send({
+          from: {email: FROM_EMAIL, name: FROM_NAME},
+          to: email,
+          subject: `Your ticket (${formattedTicket}) has been reopened`,
+          text: [
+            "Hi,",
+            "",
+            `Your support ticket ${formattedTicket} has been reopened by our team.`,
+            "",
+            "The Ferro Maps Team",
+            "",
+            `To reply to this ticket, visit: ${reopenReplyUrl}`,
+          ].join("\n"),
+          html: `
+<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+  <h2 style="color:#1E7BFF;margin-bottom:8px">Ticket ${formattedTicket} reopened</h2>
+  <p>Your support ticket has been reopened by our team.</p>
+  <p style="margin-top:32px;color:#666">The Ferro Maps Team</p>
+  <div style="text-align:center;margin-top:24px;">
+    <a href="${reopenReplyUrl}" style="display:inline-block;background:#1E7BFF;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Reply to this ticket</a>
+  </div>
+</div>`,
+        });
+        logger.info(`onTicketUpdated: reopened notification sent to ${email} (${formattedTicket})`);
+      } catch (err) {
+        logger.error(`onTicketUpdated: failed to send reopened notification to ${email}`, err);
+      }
+    }
   }
 );
 
