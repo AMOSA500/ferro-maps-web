@@ -7,6 +7,7 @@ import {
   doc,
   updateDoc,
   arrayUnion,
+  serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
 import { MessageSquare, X, RotateCcw } from 'lucide-react'
@@ -14,21 +15,12 @@ import { Button } from '@ferro-maps/ui'
 import AppShell from '../components/AppShell'
 import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
+import { toSafeDate, isTicketUnread } from '../lib/utils'
 
 type Reply = {
   text: string
   sentAt: Timestamp | string
   sentBy: string
-}
-
-function toSafeDate(sentAt: Timestamp | string | null | undefined): Date | null {
-  if (!sentAt) return null
-  if (sentAt instanceof Timestamp) return sentAt.toDate()
-  if (typeof sentAt === 'string') {
-    const parsed = new Date(sentAt)
-    return isNaN(parsed.getTime()) ? null : parsed
-  }
-  return null
 }
 
 type Ticket = {
@@ -41,6 +33,7 @@ type Ticket = {
   subject: string
   replies: Reply[]
   submittedAt: Timestamp
+  lastViewedByAdminAt?: Timestamp
 }
 
 function StatusBadge({ status }: { status: 'open' | 'closed' }) {
@@ -78,6 +71,13 @@ export default function Messages() {
     })
     return () => unsub()
   }, [])
+
+  function selectTicket(ticket: Ticket) {
+    setSelected(ticket)
+    void updateDoc(doc(db, 'supportRequests', ticket.id), {
+      lastViewedByAdminAt: serverTimestamp(),
+    }).catch(() => {})
+  }
 
   async function toggleStatus() {
     if (!selected) return
@@ -117,12 +117,12 @@ export default function Messages() {
             tickets.map((ticket) => (
               <div
                 key={ticket.id}
-                onClick={() => setSelected(ticket)}
+                onClick={() => selectTicket(ticket)}
                 className={`p-4 border-b border-gray-100 cursor-pointer ${
                   selected?.id === ticket.id
                     ? 'bg-ferro-tint'
-                    : !ticket.replies || ticket.replies.length === 0
-                      ? 'bg-blue-50'
+                    : isTicketUnread(ticket)
+                      ? 'bg-ferro-tint'
                       : 'bg-white'
                 }`}
               >
