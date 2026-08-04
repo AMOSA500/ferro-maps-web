@@ -17,8 +17,18 @@ import { useAuth } from '../contexts/AuthContext'
 
 type Reply = {
   text: string
-  sentAt: Timestamp
+  sentAt: Timestamp | string
   sentBy: string
+}
+
+function toSafeDate(sentAt: Timestamp | string | null | undefined): Date | null {
+  if (!sentAt) return null
+  if (sentAt instanceof Timestamp) return sentAt.toDate()
+  if (typeof sentAt === 'string') {
+    const parsed = new Date(sentAt)
+    return isNaN(parsed.getTime()) ? null : parsed
+  }
+  return null
 }
 
 type Ticket = {
@@ -183,14 +193,14 @@ export default function Messages() {
                       reply.sentBy === 'driver' ? (
                         <div key={i} className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm">
                           <div className="text-xs text-gray-400 mb-1">
-                            Driver reply · {reply.sentAt.toDate().toLocaleString()}
+                            Driver reply · {toSafeDate(reply.sentAt)?.toLocaleString() ?? 'Date unknown'}
                           </div>
                           <div className="text-gray-700">{reply.text}</div>
                         </div>
                       ) : (
                         <div key={i} className="bg-ferro-tint rounded-xl p-4 text-sm">
                           <div className="text-xs text-gray-400 mb-1">
-                            Admin reply · {reply.sentAt.toDate().toLocaleString()}
+                            Admin reply · {toSafeDate(reply.sentAt)?.toLocaleString() ?? 'Date unknown'}
                           </div>
                           <div className="text-gray-700">{reply.text}</div>
                         </div>
