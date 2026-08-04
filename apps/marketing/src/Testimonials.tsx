@@ -1,8 +1,8 @@
-import ferroBirdCrow from './assets/avatars/ferro-bird-crow.png'
-import ferroBirdDetective from './assets/avatars/ferro-bird-detective.png'
-import ferroBirdFalcon from './assets/avatars/ferro-bird-falcon.png'
-import ferroBirdGamer from './assets/avatars/ferro-bird-gamer.png'
-import ferroBirdNinja from './assets/avatars/ferro-bird-ninja.png'
+import ferroBirdCrow from './assets/friends/ferro-bird-crow.png'
+import ferroBirdDetective from './assets/skins/ferro-bird-detective.png'
+import ferroBirdFalcon from './assets/friends/ferro-bird-falcon.png'
+import ferroBirdGamer from './assets/skins/ferro-bird-gamer.png'
+import ferroBirdNinja from './assets/skins/ferro-bird-ninja.png'
 
 const KEYFRAMES = `
   @keyframes scroll-left {
