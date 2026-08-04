@@ -3,7 +3,6 @@ import {
   onDocumentCreated,
   onDocumentUpdated,
 } from "firebase-functions/v2/firestore";
-import {onCall, HttpsError} from "firebase-functions/v2/https";
 import {defineSecret} from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
 import sgMail from "@sendgrid/mail";
@@ -287,107 +286,85 @@ export const onTicketUpdated = onDocumentUpdated(
   }
 );
 
-export const validateTicketToken = onCall(
-  {region: "europe-west2", secrets: [ticketSecret], invoker: "public", cors: true},
-  async (request) => {
-    const token = request.data?.token as string | undefined;
-    if (!token) {
-      throw new HttpsError("invalid-argument", "Token is required");
+// Handles driver ticket-page requests (validating a link, submitting a reply)
+// via a Firestore-triggered function rather than onCall -- onCall requires a
+// public invoker IAM grant this project's org policy blocks, and separately,
+// the driver visiting this page is never signed in, so a direct client-side
+// Firestore read would also fail the supportRequests auth rule regardless.
+// Writing a request document (public create, public read on a fresh random
+// ID, but content only ever populated after real server-side HMAC token
+// verification) sidesteps both problems -- same pattern as onAccountAction.
+export const onTicketRequest = onDocumentCreated(
+  {document: "ticketRequests/{requestId}", secrets: [ticketSecret]},
+  async (event) => {
+    const data = event.data?.data();
+    const requestRef = event.data?.ref;
+    if (!data || !requestRef) {
+      logger.warn("onTicketRequest: no data in event, skipping");
+      return;
     }
 
-    const parsed = verifyToken(token, ticketSecret.value());
-    if (!parsed) {
-      throw new HttpsError("unauthenticated", "Invalid or tampered token");
-    }
-
-    const {ticketId, email} = parsed;
-
-    const ticketSnap = await db
-      .collection("supportRequests")
-      .doc(ticketId)
-      .get();
-
-    if (!ticketSnap.exists) {
-      throw new HttpsError("not-found", "Ticket not found");
-    }
-
-    const ticket = ticketSnap.data()!;
-
-    if (ticket.email !== email) {
-      throw new HttpsError("permission-denied", "Token does not match ticket");
-    }
-
-    if (ticket.status === "closed") {
-      throw new HttpsError(
-        "failed-precondition",
-        "This ticket is closed and can no longer be replied to"
-      );
-    }
-
-    return {
-      ticketId,
-      ticketNumber: ticket.ticketNumber,
-      subject: ticket.subject,
-      message: ticket.message,
-      status: ticket.status,
-      replies: ticket.replies ?? [],
-      submittedAt: ticket.submittedAt?.toDate?.()?.toISOString() ?? null,
-    };
-  }
-);
-
-export const submitDriverReply = onCall(
-  {region: "europe-west2", secrets: [ticketSecret], invoker: "public", cors: true},
-  async (request) => {
-    const {token, replyText} = request.data as {
+    const {type, token, replyText} = data as {
+      type: "validate" | "reply";
       token: string;
-      replyText: string;
+      replyText?: string;
     };
 
-    if (!token || !replyText?.trim()) {
-      throw new HttpsError(
-        "invalid-argument",
-        "Token and reply text are required"
-      );
+    try {
+      const parsed = verifyToken(token, ticketSecret.value());
+      if (!parsed) {
+        throw new Error("Invalid or tampered link.");
+      }
+      const {ticketId, email} = parsed;
+
+      const ticketRef = db.collection("supportRequests").doc(ticketId);
+      const ticketSnap = await ticketRef.get();
+      if (!ticketSnap.exists) {
+        throw new Error("Ticket not found.");
+      }
+      const ticket = ticketSnap.data()!;
+      if (ticket.email !== email) {
+        throw new Error("This link does not match this ticket.");
+      }
+      if (ticket.status === "closed") {
+        throw new Error("This ticket has been closed and can no longer be replied to.");
+      }
+
+      if (type === "validate") {
+        await requestRef.update({
+          status: "done",
+          result: {
+            ticketId,
+            ticketNumber: ticket.ticketNumber,
+            subject: ticket.subject,
+            message: ticket.message,
+            status: ticket.status,
+            replies: ticket.replies ?? [],
+            submittedAt: ticket.submittedAt?.toDate?.()?.toISOString() ?? null,
+          },
+        });
+      } else if (type === "reply") {
+        if (!replyText?.trim()) {
+          throw new Error("Reply text is required.");
+        }
+        await ticketRef.update({
+          replies: FieldValue.arrayUnion({
+            text: replyText.trim(),
+            sentAt: new Date().toISOString(),
+            sentBy: "driver",
+          }),
+        });
+        await requestRef.update({status: "done", result: {success: true}});
+      } else {
+        throw new Error("Unknown request type.");
+      }
+
+      logger.info(`onTicketRequest: ${type} succeeded for ticket ${ticketId}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await requestRef.update({status: "error", error: message});
+      logger.warn(`onTicketRequest: ${type} failed: ${message}`);
     }
-
-    const parsed = verifyToken(token, ticketSecret.value());
-    if (!parsed) {
-      throw new HttpsError("unauthenticated", "Invalid or tampered token");
-    }
-
-    const {ticketId, email} = parsed;
-
-    const ticketRef = db.collection("supportRequests").doc(ticketId);
-    const ticketSnap = await ticketRef.get();
-
-    if (!ticketSnap.exists) {
-      throw new HttpsError("not-found", "Ticket not found");
-    }
-
-    const ticket = ticketSnap.data()!;
-
-    if (ticket.email !== email) {
-      throw new HttpsError("permission-denied", "Token does not match ticket");
-    }
-
-    if (ticket.status === "closed") {
-      throw new HttpsError(
-        "failed-precondition",
-        "This ticket is closed and can no longer be replied to"
-      );
-    }
-
-    await ticketRef.update({
-      replies: FieldValue.arrayUnion({
-        text: replyText.trim(),
-        sentAt: new Date(),
-        sentBy: "driver",
-      }),
-    });
-
-    logger.info(`submitDriverReply: driver reply added to ticket ${ticketId}`);
-    return {success: true};
   }
 );
 
