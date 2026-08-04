@@ -117,9 +117,30 @@ export default function TicketView() {
 
   async function handleSubmitReply() {
     if (!replyText.trim() || submitting || !ticketData || !token) return
+    const trimmedReply = replyText.trim()
     setSubmitting(true)
     try {
-      await submitTicketRequest<{ success: boolean }>('reply', token, replyText.trim())
+      await submitTicketRequest<{ success: boolean }>('reply', token, trimmedReply)
+
+      // Optimistically add the reply to the thread -- the server-written
+      // version (with a real Firestore-generated sentAt) isn't reflected
+      // here otherwise, since this page doesn't re-validate the ticket
+      // after submit. Dedupe on sender + text since replies have no
+      // stable ID to key off if something later re-syncs this list.
+      const optimisticReply: Reply = {
+        text: trimmedReply,
+        sentAt: new Date().toISOString(),
+        sentBy: 'driver',
+      }
+      setTicketData((prev) => {
+        if (!prev) return prev
+        const alreadyPresent = prev.replies.some(
+          (r) => r.sentBy === 'driver' && r.text === optimisticReply.text,
+        )
+        if (alreadyPresent) return prev
+        return { ...prev, replies: [...prev.replies, optimisticReply] }
+      })
+
       setSubmitted(true)
       setReplyText('')
     } catch {
