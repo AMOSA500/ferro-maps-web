@@ -331,6 +331,13 @@ export const onTicketRequest = onDocumentCreated(
       }
 
       if (type === "validate") {
+        const repliesForDriver = (ticket.replies ?? []).map(
+          (reply: {text: string; sentBy: string; sentAt?: {toDate?: () => Date}}) => ({
+            text: reply.text,
+            sentBy: reply.sentBy,
+            sentAt: reply.sentAt?.toDate?.()?.toISOString() ?? null,
+          })
+        );
         await requestRef.update({
           status: "done",
           result: {
@@ -339,7 +346,7 @@ export const onTicketRequest = onDocumentCreated(
             subject: ticket.subject,
             message: ticket.message,
             status: ticket.status,
-            replies: ticket.replies ?? [],
+            replies: repliesForDriver,
             submittedAt: ticket.submittedAt?.toDate?.()?.toISOString() ?? null,
           },
         });
@@ -350,7 +357,7 @@ export const onTicketRequest = onDocumentCreated(
         await ticketRef.update({
           replies: FieldValue.arrayUnion({
             text: replyText.trim(),
-            sentAt: new Date().toISOString(),
+            sentAt: new Date(),
             sentBy: "driver",
           }),
         });
