@@ -5,6 +5,7 @@ import { LayoutDashboard, Car, MessageSquare, Settings, ChevronLeft, ChevronRigh
 import { collection, query, onSnapshot } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
+import { isTicketUnread, type UnreadTicket } from '../lib/utils'
 import ferroBirdIcon from '../assets/ferro-bird-icon.png'
 
 type AppShellProps = {
@@ -27,10 +28,7 @@ export default function AppShell({ children, title }: AppShellProps) {
   useEffect(() => {
     const q = query(collection(db, 'supportRequests'))
     const unsub = onSnapshot(q, (snap) => {
-      const count = snap.docs.filter((d) => {
-        const replies = d.data().replies
-        return !replies || replies.length === 0
-      }).length
+      const count = snap.docs.filter((d) => isTicketUnread(d.data() as UnreadTicket)).length
       setUnreadCount(count)
     })
     return () => unsub()
