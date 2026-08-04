@@ -6,7 +6,7 @@ import { User, History, Settings, LogOut, Menu } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import { auth } from '../lib/firebase'
 import ferroLogo from '../assets/ferro-logo-2.png'
-import { doc, getDoc, updateDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, onSnapshot, collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { Lock } from 'lucide-react'
 import skinClassic from '../assets/skins/ferro-bird-classic.png'
@@ -65,13 +65,13 @@ function ProfileSection() {
   const { user } = useAuth()
 
   useEffect(() => {
-    async function fetchUser() {
-      if (!user) {
-        setLoading(false)
-        return
-      }
-      try {
-        const snap = await getDoc(doc(db, 'users', user.uid))
+    if (!user) {
+      setLoading(false)
+      return
+    }
+    const unsubscribe = onSnapshot(
+      doc(db, 'users', user.uid),
+      (snap) => {
         if (snap.exists()) {
           const data = snap.data()
           setUserData({
@@ -81,16 +81,17 @@ function ProfileSection() {
             selectedAvatar: data.selectedAvatar || '',
             xp: typeof data.xp === 'number' ? data.xp : 0,
           })
-          setEditName(data.name || '')
+          setEditName((prev) => (editMode ? prev : data.name || ''))
         }
-      } catch {
-        setError('Failed to load profile.')
-      } finally {
         setLoading(false)
-      }
-    }
-    fetchUser()
-  }, [user])
+      },
+      () => {
+        setError('Failed to load profile.')
+        setLoading(false)
+      },
+    )
+    return () => unsubscribe()
+  }, [user, editMode])
 
   if (!user) return <p className="text-neutral-500 text-center p-8">Please sign in to view your profile.</p>
   if (loading) return <div className="flex justify-center mt-12"><div className="animate-spin border-4 border-ferro-primary border-t-transparent rounded-full w-8 h-8" /></div>
