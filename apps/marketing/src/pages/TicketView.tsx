@@ -93,7 +93,7 @@ export default function TicketView() {
   useEffect(() => {
     async function loadTicket() {
       if (!token) {
-        setError('This link is invalid or has expired. Please contact support@ferromaps.com')
+        setError('This link is invalid or has expired. Please contact admin@ferromaps.com')
         setLoading(false)
         return
       }
