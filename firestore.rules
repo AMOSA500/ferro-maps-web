@@ -99,6 +99,23 @@ service cloud.firestore {
       allow write: if request.auth != null;    // only authenticated users can register
     }
 
+    // Ticket requests — driver ticket page submits validate/reply requests
+    // here (public, unauthenticated -- drivers are never signed in when
+    // clicking an email link, and many haven't even created an account yet).
+    // onTicketRequest Cloud Function verifies the HMAC token server-side
+    // before populating any real ticket content.
+    // Read is public too, but safe: the doc ID is a long random unguessable
+    // string, and real ticket data only ever lands here after the token has
+    // already been verified -- equivalent exposure to knowing a ticket's own
+    // Firestore ID directly.
+    match /ticketRequests/{requestId} {
+      allow create: if request.resource.data.type in ['validate', 'reply']
+                    && request.resource.data.token is string
+                    && request.resource.data.status == 'pending';
+      allow read: if true;
+      allow update, delete: if false;
+    }
+
     // Block everything else
     match /{document=**} {
       allow read, write: if false;
