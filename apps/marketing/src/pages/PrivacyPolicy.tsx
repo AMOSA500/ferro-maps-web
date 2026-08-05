@@ -122,8 +122,8 @@ export default function PrivacyPolicy() {
                   ['Company number', '17197682'],
                   ['Registered office', 'Icon Tower, North Acton, London W3 6FD'],
                   ['Data protection contact', 'Nafiu Amosa, Lead Developer'],
-                  ['Contact email', '[privacy@ferromaps.co.uk — insert once live]'],
-                  ['ICO registration', '[Registration number — insert once issued]'],
+                  ['Contact email', 'nafiu.a@ferromaps.co.uk'],
+                  ['ICO registration', '[In progress]'],
                 ]}
               />
               <p className="text-text-secondary leading-relaxed">
@@ -903,7 +903,7 @@ export default function PrivacyPolicy() {
               <div className="bg-neutral-50 rounded-xl p-6 text-text-secondary leading-relaxed space-y-1">
                 <p className="font-semibold text-text-primary">Ferro Maps Ltd</p>
                 <p>Data protection contact: Nafiu Amosa, Lead Developer</p>
-                <p>Email: [privacy@ferromaps.co.uk — insert once live]</p>
+                <p>Email: nafiu.a@ferromaps.co.uk</p>
                 <p>Post: Icon Tower, North Acton, London W3 6FD</p>
               </div>
               <p className="text-text-secondary leading-relaxed mt-4">
