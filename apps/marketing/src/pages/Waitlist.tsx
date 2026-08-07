@@ -12,6 +12,8 @@ function encodeEmailToDocId(email: string): string {
   return email.toLowerCase().replace(/[^a-z0-9]/g, '_')
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 const COUNTRIES = [
   'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia',
   'Australia', 'Austria', 'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium',
@@ -43,6 +45,7 @@ export default function Waitlist() {
   const navigate = useNavigate()
 
   const [email, setEmail] = useState('')
+  const [emailError, setEmailError] = useState('')
   const [country, setCountry] = useState('')
   const [countryQuery, setCountryQuery] = useState('')
   const [countryOpen, setCountryOpen] = useState(false)
@@ -59,6 +62,12 @@ export default function Waitlist() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+
+    if (!EMAIL_PATTERN.test(email)) {
+      setEmailError('Please enter a valid email address.')
+      return
+    }
+    setEmailError('')
 
     if (!consent) {
       setConsentError('Please agree to be contacted before joining the waitlist.')
@@ -159,8 +168,12 @@ export default function Waitlist() {
                 label="Email"
                 placeholder="you@example.com"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => {
+                  setEmail(e.target.value)
+                  if (emailError && EMAIL_PATTERN.test(e.target.value)) setEmailError('')
+                }}
                 required
+                error={emailError}
                 className="!rounded-md"
               />
 
