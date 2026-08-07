@@ -16,6 +16,7 @@ import SignIn from './pages/SignIn'
 import Dashboard from './pages/Dashboard'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import ScrollToTop from './components/ScrollToTop'
 import TicketView from './pages/TicketView'
 import Waitlist from './pages/Waitlist'
 import WaitlistConfirmed from './pages/WaitlistConfirmed'
@@ -79,6 +80,7 @@ export default function App() {
   return (
     <HelmetProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Home />} />
