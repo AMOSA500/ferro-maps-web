@@ -1077,7 +1077,7 @@ export default function TermsConditions() {
               </p>
               <div className="bg-neutral-50 rounded-xl p-6 text-text-secondary leading-relaxed space-y-1">
                 <p className="font-semibold text-text-primary">Ferro Maps Ltd</p>
-                <p>Email: [support@ferromaps.com — insert once live]</p>
+                <p>Email: admin@ferromaps.com </p>
                 <p>Post: Icon Tower, North Acton, London W3 6FD</p>
                 <p>Company number: 17197682</p>
               </div>
