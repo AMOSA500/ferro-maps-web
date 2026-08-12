@@ -84,7 +84,7 @@ export default function Header() {
           <div className="hidden md:flex items-center gap-3">
             <button
               className="bg-ferro-primary text-white rounded-button px-6 py-2 font-semibold whitespace-nowrap transition-colors duration-fast hover:bg-ferro-deep"
-              onClick={() => handleNavClick('download')}
+              onClick={() => navigate('/waitlist')}
             >
               Get Started
             </button>

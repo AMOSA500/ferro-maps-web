@@ -1,4 +1,8 @@
+import { useNavigate } from 'react-router-dom'
+
 export default function Hero() {
+  const navigate = useNavigate()
+
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -21,7 +25,7 @@ export default function Hero() {
 
           <div className="mt-10 flex gap-4">
             <button
-              onClick={() => scrollTo('download')}
+              onClick={() => navigate('/waitlist')}
               className="bg-ferro-primary text-white rounded-button px-6 py-3 font-semibold hover:bg-ferro-deep transition-colors duration-fast"
             >
               Get Started
