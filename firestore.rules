@@ -72,10 +72,11 @@ service cloud.firestore {
       allow write: if false;  // only the Admin SDK (Cloud Function) writes
     }
 
-    // Waitlist — public write, one-time only per document ID, no client reads
+    // Waitlist — public write, one-time only per document ID; read restricted to admins
     match /waitlist/{docId} {
       allow create: if resource == null;
-      allow read, update, delete: if false;
+      allow read: if request.auth != null && request.auth.token.role == 'admin';
+      allow update, delete: if false;
     }
 
     // Rate limits — Cloud Functions only (Admin SDK bypasses rules)
