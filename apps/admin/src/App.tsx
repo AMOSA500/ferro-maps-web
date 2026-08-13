@@ -9,6 +9,7 @@ import Drivers from './pages/Drivers'
 import Rankings from './pages/Rankings'
 import Settings from './pages/Settings'
 import Messages from './pages/Messages'
+import Waitlist from './pages/Waitlist'
 
 export default function App() {
   return (
@@ -46,6 +47,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Messages />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/waitlist"
+            element={
+              <ProtectedRoute>
+                <Waitlist />
               </ProtectedRoute>
             }
           />
