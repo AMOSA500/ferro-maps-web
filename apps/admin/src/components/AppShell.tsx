@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { LayoutDashboard, Car, MessageSquare, Settings, ChevronLeft, ChevronRight, Bell, Star } from 'lucide-react'
+import { LayoutDashboard, Car, MessageSquare, Settings, ChevronLeft, ChevronRight, Bell, Star, ListChecks } from 'lucide-react'
 import { collection, query, onSnapshot } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
@@ -46,6 +46,7 @@ export default function AppShell({ children, title }: AppShellProps) {
       icon: <MessageSquare size={20} />,
       badge: unreadCount,
     },
+    { label: 'Waitlist', to: '/waitlist', icon: <ListChecks size={20} /> },
     { label: 'Settings', to: '/settings', icon: <Settings size={20} /> },
   ]
 
