@@ -54,6 +54,11 @@ export default function Waitlist() {
               People who signed up to be notified when Ferro Maps launches
             </p>
           </div>
+          {!loading && (
+            <p className="text-sm font-medium text-text-primary whitespace-nowrap">
+              {entries.length.toLocaleString()} {entries.length === 1 ? 'person' : 'people'} on the waitlist
+            </p>
+          )}
         </div>
 
         {/* Search */}
