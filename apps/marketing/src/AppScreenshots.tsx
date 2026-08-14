@@ -1,13 +1,13 @@
 import mapView from './assets/map-view.png'
-import exploreOpportunities from './assets/explore-opportunities.png'
+import explore from './assets/explore.png'
 import profile from './assets/profile.png'
 
-function PhoneSVG({ clipId, image, label }: { clipId: string; image: string; label: string }) {
+function PhoneSVG({ clipId, image, alt }: { clipId: string; image: string; alt: string }) {
   return (
     <div className="relative" style={{ width: 280, height: 580 }}>
       <img
         src={image}
-        alt={`${label} screen in the Ferro Maps app`}
+        alt={alt}
         className="absolute object-cover"
         style={{
           left: 3,
@@ -50,9 +50,24 @@ function PhoneSVG({ clipId, image, label }: { clipId: string; image: string; lab
 }
 
 const phones = [
-  { label: 'Map View', clipId: 'screen-clip-1', image: mapView },
-  { label: 'Explore Opportunities', clipId: 'screen-clip-2', image: exploreOpportunities },
-  { label: 'Profile', clipId: 'screen-clip-3', image: profile },
+  {
+    label: 'Map View',
+    clipId: 'screen-clip-1',
+    image: mapView,
+    alt: 'Ferro Maps live map view screen showing nearby opportunities',
+  },
+  {
+    label: 'Explore Opportunities',
+    clipId: 'screen-clip-2',
+    image: explore,
+    alt: 'Ferro Maps explore opportunities screen',
+  },
+  {
+    label: 'Profile',
+    clipId: 'screen-clip-3',
+    image: profile,
+    alt: 'Ferro Maps profile screen',
+  },
 ]
 
 export default function AppScreenshots() {
@@ -76,10 +91,10 @@ export default function AppScreenshots() {
         className="flex items-end gap-8 lg:gap-12 lg:justify-center overflow-x-auto lg:overflow-x-hidden snap-x snap-mandatory lg:snap-none -mx-6 px-6 lg:mx-0 lg:px-0 pb-4 lg:pb-0"
         style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
       >
-        {phones.map(({ label, clipId, image }) => (
+        {phones.map(({ label, clipId, image, alt }) => (
           <div key={label} className="flex flex-col items-center gap-4 snap-center shrink-0">
             <span className="text-label font-medium text-neutral-700">{label}</span>
-            <PhoneSVG clipId={clipId} image={image} label={label} />
+            <PhoneSVG clipId={clipId} image={image} alt={alt} />
           </div>
         ))}
       </div>
