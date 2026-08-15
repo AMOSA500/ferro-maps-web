@@ -10,7 +10,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
-import { MessageSquare, X, RotateCcw } from 'lucide-react'
+import { MessageSquare, X, RotateCcw, ArrowLeft } from 'lucide-react'
 import { Button } from '@ferro-maps/ui'
 import AppShell from '../components/AppShell'
 import { db } from '../lib/firebase'
@@ -58,6 +58,7 @@ export default function Messages() {
   const [selected, setSelected] = useState<Ticket | null>(null)
   const [replyText, setReplyText] = useState('')
   const [sending, setSending] = useState(false)
+  const [mobileView, setMobileView] = useState<'list' | 'conversation'>('list')
 
   useEffect(() => {
     const q = query(collection(db, 'supportRequests'), orderBy('submittedAt', 'desc'))
@@ -74,6 +75,7 @@ export default function Messages() {
 
   function selectTicket(ticket: Ticket) {
     setSelected(ticket)
+    setMobileView('conversation')
     void updateDoc(doc(db, 'supportRequests', ticket.id), {
       lastViewedByAdminAt: serverTimestamp(),
     }).catch(() => {})
@@ -107,7 +109,11 @@ export default function Messages() {
     <AppShell title="Messages">
       <div className="flex h-full overflow-hidden">
         {/* Left panel */}
-        <div className="w-80 min-w-[320px] border-r border-gray-200 overflow-y-auto">
+        <div
+          className={`w-full md:w-80 md:min-w-[320px] border-r border-gray-200 overflow-y-auto ${
+            mobileView === 'conversation' ? 'hidden md:block' : 'block'
+          }`}
+        >
           {tickets.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2 p-8">
               <MessageSquare size={32} />
@@ -142,7 +148,11 @@ export default function Messages() {
         </div>
 
         {/* Right panel */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div
+          className={`flex-1 flex-col overflow-hidden ${
+            mobileView === 'conversation' ? 'flex' : 'hidden md:flex'
+          }`}
+        >
           {!selected ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2">
               <MessageSquare size={40} />
@@ -153,6 +163,13 @@ export default function Messages() {
               {/* Header */}
               <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setMobileView('list')}
+                    className="md:hidden -ml-2 mr-1 w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors duration-fast"
+                    aria-label="Back to ticket list"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
                   <span className="text-sm font-semibold text-gray-700">
                     {formatTicketNumber(selected.ticketNumber)}
                   </span>
