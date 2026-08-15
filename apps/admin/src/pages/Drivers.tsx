@@ -261,8 +261,9 @@ export default function Drivers() {
 
         {/* Table card */}
         <div className="bg-white rounded-card border border-gray-200 shadow-md overflow-hidden">
+          <p className="md:hidden text-xs text-gray-400 px-4 pt-3">Swipe to see more</p>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[760px] text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-neutral-50">
                   {COLUMNS.map((col) => (
