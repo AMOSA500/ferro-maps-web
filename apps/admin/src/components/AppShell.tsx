@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { LayoutDashboard, Car, MessageSquare, Settings, ChevronLeft, ChevronRight, Bell, Star, ListChecks } from 'lucide-react'
+import { LayoutDashboard, Car, MessageSquare, Settings, ChevronLeft, ChevronRight, Bell, Star, ListChecks, Menu } from 'lucide-react'
 import { collection, query, onSnapshot } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuth } from '../contexts/AuthContext'
@@ -23,7 +23,12 @@ function getInitials(email: string | null | undefined): string {
 
 export default function AppShell({ children, title }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  // The mobile drawer always shows the full (uncollapsed) sidebar, regardless
+  // of the desktop collapse state, since collapsing only makes sense for the
+  // docked desktop layout.
+  const effectiveCollapsed = mobileOpen ? false : collapsed
 
   useEffect(() => {
     const q = query(collection(db, 'supportRequests'))
@@ -52,16 +57,25 @@ export default function AppShell({ children, title }: AppShellProps) {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* Mobile scrim */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar */}
       <aside
-        className={`flex flex-col bg-ferro-deep transition-[width] duration-base ease-standard flex-shrink-0 ${
-          collapsed ? 'w-[72px]' : 'w-[220px]'
-        }`}
+        className={`flex flex-col bg-ferro-deep transition-[width,transform] duration-base ease-standard flex-shrink-0 fixed inset-y-0 left-0 z-50 md:static md:translate-x-0 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        } ${effectiveCollapsed ? 'w-[72px]' : 'w-[220px]'}`}
       >
         {/* Logo + toggle */}
         <div
           className={`flex items-center py-5 ${
-            collapsed ? 'px-2 justify-between' : 'px-4 gap-3'
+            effectiveCollapsed ? 'px-2 justify-between' : 'px-4 gap-3'
           }`}
         >
           <img
@@ -69,12 +83,12 @@ export default function AppShell({ children, title }: AppShellProps) {
             alt="Ferro Maps"
             className="w-8 h-8 rounded-md flex-shrink-0"
           />
-          {!collapsed && (
+          {!effectiveCollapsed && (
             <span className="text-white font-medium text-label truncate flex-1">Ferro Maps</span>
           )}
           <button
             onClick={() => setCollapsed((c) => !c)}
-            className="w-5 h-5 flex items-center justify-center rounded text-white/60 hover:text-white hover:bg-white/10 transition-colors duration-fast flex-shrink-0"
+            className="hidden md:flex w-5 h-5 items-center justify-center rounded text-white/60 hover:text-white hover:bg-white/10 transition-colors duration-fast flex-shrink-0"
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
@@ -87,9 +101,10 @@ export default function AppShell({ children, title }: AppShellProps) {
             <NavLink
               key={item.to}
               to={item.to}
+              onClick={() => setMobileOpen(false)}
               className={({ isActive }) => {
                 const base = 'flex items-center rounded-md transition-colors duration-fast text-label'
-                const layout = collapsed ? 'justify-center py-2 px-2' : 'gap-3 px-3 py-2'
+                const layout = effectiveCollapsed ? 'justify-center py-2 px-2' : 'gap-3 px-3 py-2'
                 const color = isActive
                   ? 'bg-white/15 text-white'
                   : 'text-white/75 hover:bg-white/10 hover:text-white'
@@ -97,8 +112,8 @@ export default function AppShell({ children, title }: AppShellProps) {
               }}
             >
               <span className="flex-shrink-0">{item.icon}</span>
-              {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
-              {!collapsed && item.badge ? (
+              {!effectiveCollapsed && <span className="flex-1 truncate">{item.label}</span>}
+              {!effectiveCollapsed && item.badge ? (
                 <span className="ml-auto rounded-full bg-ferro-signal text-ferro-ink text-overline font-semibold px-1.5 py-0.5 leading-none">
                   {item.badge}
                 </span>
@@ -111,13 +126,13 @@ export default function AppShell({ children, title }: AppShellProps) {
         <div className="border-t border-white/15">
           <div
             className={`flex items-center py-4 ${
-              collapsed ? 'justify-center px-0' : 'gap-3 px-4'
+              effectiveCollapsed ? 'justify-center px-0' : 'gap-3 px-4'
             }`}
           >
             <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0">
               <span className="text-white text-caption font-semibold">{initials}</span>
             </div>
-            {!collapsed && (
+            {!effectiveCollapsed && (
               <div className="flex-1 min-w-0">
                 <p className="text-white text-caption truncate">{user?.email}</p>
                 <p className="text-white/60 text-overline">Admin</p>
@@ -131,7 +146,16 @@ export default function AppShell({ children, title }: AppShellProps) {
       <div className="flex flex-col flex-1 min-w-0 bg-white">
         {/* Header */}
         <header className="flex items-center justify-between h-16 px-6 bg-white border-b border-border-default flex-shrink-0">
-          <h1 className="text-subtitle font-semibold text-text-primary">{title}</h1>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="md:hidden w-8 h-8 flex items-center justify-center rounded-md text-text-tertiary hover:text-text-primary hover:bg-surface-raised transition-colors duration-fast -ml-1 flex-shrink-0"
+              aria-label="Open menu"
+            >
+              <Menu size={20} />
+            </button>
+            <h1 className="text-subtitle font-semibold text-text-primary truncate">{title}</h1>
+          </div>
           <div className="flex items-center gap-3">
             <button
               className="w-8 h-8 flex items-center justify-center rounded-md text-text-tertiary hover:text-text-primary hover:bg-surface-raised transition-colors duration-fast"
