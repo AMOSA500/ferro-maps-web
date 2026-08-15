@@ -75,7 +75,9 @@ export default function Waitlist() {
 
         {/* Table */}
         <div className="bg-white rounded-card border border-gray-200 shadow-md overflow-hidden">
-          <table className="w-full text-sm">
+          <p className="md:hidden text-xs text-gray-400 px-4 pt-3">Swipe to see more</p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-neutral-50">
                 <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wide">Email</th>
@@ -112,7 +114,8 @@ export default function Waitlist() {
                 ))
               )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       </div>
     </AppShell>
