@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import heroPhoneScreen from './assets/hero-phone-screen.png.jpeg'
 
 export default function Hero() {
   const navigate = useNavigate()
@@ -73,11 +74,16 @@ export default function Hero() {
               rx="13"
               fill="#0F1626"
             />
-            {/* Decorative screen ellipses — clipped to phone screen */}
-            <g clipPath="url(#screen-clip)">
-              <ellipse cx="105" cy="330" rx="128" ry="108" fill="#EEF2F8" />
-              <ellipse cx="178" cy="248" rx="108" ry="138" fill="#DDE4EF" />
-            </g>
+            {/* App screenshot — clipped to phone screen */}
+            <image
+              href={heroPhoneScreen}
+              x="4"
+              y="4"
+              width="272"
+              height="552"
+              clipPath="url(#screen-clip)"
+              preserveAspectRatio="xMidYMid slice"
+            />
           </svg>
         </div>
 
