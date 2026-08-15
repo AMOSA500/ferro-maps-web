@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import heroPhoneScreen from './assets/hero-phone-screen.png.jpeg'
+import heroPhoneScreen from './assets/hero-phone-screen2.png.jpg'
 
 export default function Hero() {
   const navigate = useNavigate()
