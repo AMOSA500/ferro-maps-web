@@ -118,12 +118,11 @@ export default function PrivacyPolicy() {
               <Table
                 headers={[]}
                 rows={[
-                  ['Company name', 'Ferro Maps Ltd'],
+                  ['Data controller', 'Ferro Maps Ltd'],
                   ['Company number', '17197682'],
                   ['Registered office', 'Icon Tower, North Acton, London W3 6FD'],
-                  ['Data protection contact', 'Nafiu Amosa, Lead Developer'],
-                  ['Contact email', 'nafiu.a@ferromaps.co.uk'],
-                  ['ICO registration', '[In progress]'],
+                  ['ICO registration number', 'ZC147391'],
+                  ['Data protection queries', 'privacy@ferromaps.co.uk'],
                 ]}
               />
               <p className="text-text-secondary leading-relaxed">
