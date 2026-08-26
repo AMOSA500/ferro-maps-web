@@ -88,7 +88,7 @@ export default function Footer() {
 
           <div className="flex flex-row items-start gap-2 mb-7">
             <a
-              href="https://apps.apple.com"
+              href="https://apps.apple.com/gb/app/ferromaps/id6783352319"
               target="_blank"
               rel="noopener noreferrer"
               className={storeBtn}

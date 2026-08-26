@@ -67,7 +67,7 @@ export default function DownloadBanner() {
 
           <div className="flex flex-row items-center justify-center gap-3 md:gap-4">
             <a
-              href="https://apps.apple.com"
+              href="https://apps.apple.com/gb/app/ferromaps/id6783352319"
               target="_blank"
               rel="noopener noreferrer"
               className={btnBase}
