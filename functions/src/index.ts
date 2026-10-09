@@ -14,6 +14,7 @@ import * as crypto from "crypto";
 export * from "./sendWaitlistWelcomeEmail";
 export * from "./admin/rollups";
 export * from "./admin/onConfigRequest";
+export * from "./admin/sendWeeklyReport";
 
 if (getApps().length === 0) {
   initializeApp();
